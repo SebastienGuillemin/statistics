@@ -3,6 +3,7 @@ import pandas as pd
 import dataloader as dl
 import random
 from samples_dataset import SamplesDataset
+from torch.utils.data import random_split
 
 
 def load_samples(subsample_size=-1):
@@ -74,3 +75,9 @@ def load_dataset(size=-1):
     dataset_tuples += counter_examples
 
     return SamplesDataset(dataset_tuples)
+
+
+def split_dataset(full_dataset):
+    train_size = int(0.8 * len(full_dataset))
+    test_size = len(full_dataset) - train_size
+    return random_split(full_dataset, [train_size, test_size])
