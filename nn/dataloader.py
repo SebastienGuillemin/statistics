@@ -43,7 +43,7 @@ def load_samples(subsample_size=-1):
     return samples
 
 
-def load_dataset(size=-1):
+def load_samples_dataset(size=-1):
     samples = dl.load_samples(subsample_size=size)
     # clean_samples = samples.drop(columns=['id', 'num_echantillon', 'id_lot'])
     clean_samples = samples.drop(columns=['id', 'id_lot'])
@@ -96,7 +96,7 @@ def split_dataset(full_dataset, split_ratio=0.8):
 
 def get_dataloaders(samples_count=-1, split_ratio=0.8, device=None):
     print(f'Creating dataset using {"all available" if samples_count == -1 else samples_count} samples.')
-    samples_dataset = load_dataset(size=samples_count)
+    samples_dataset = load_samples_dataset(size=samples_count)
     print(f'Dataset created : {len(samples_dataset)} examples ({samples_dataset.get_positive_examples_number()} positive examples, {samples_dataset.get_negative_examples_number()} nagative examples)')
 
     train_dataset, test_dataset = split_dataset(samples_dataset, split_ratio)
