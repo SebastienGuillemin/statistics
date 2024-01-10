@@ -83,6 +83,8 @@ def load_samples_dataset(size=-1):
 
     dataset_tuples += counter_examples
 
+    print(f'Dataset size : {len(dataset_tuples)}')
+
     return SamplesDataset(dataset_tuples)
 
 
