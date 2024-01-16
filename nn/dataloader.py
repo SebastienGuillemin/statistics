@@ -19,7 +19,7 @@ def clean_samples(samples):
 
     return clean_samples
 
-def load_samples(subsample_size=-1, drug_type=None):
+def load_samples(subsample_size=-1, normalize=True, drug_type=None):
     # Loading data
     conn = psycopg2.connect(database="full_STUPS",
                             user="postgres",
@@ -50,7 +50,14 @@ def load_samples(subsample_size=-1, drug_type=None):
     samples = pd.DataFrame(list(samples), columns=colnames)
     samples.drop(columns=['description_de_l_objet', 'nom_de_logo', 'numero_echantillon', ])
 
-    quanti_cols = samples[quanti_cols_df_names].fillna(value=0.0).astype(float)
+    quanti_cols = samples[quanti_cols_df_names].astype(float)
+    
+
+    if normalize:
+        max_quanti_cols = quanti_cols.max()
+        quanti_cols = quanti_cols.divide(max_quanti_cols)
+
+    quanti_cols = quanti_cols.fillna(value=0.0)
 
     quali_cols = samples[quali_cols_df_names]
     quali_cols = quali_cols.replace(to_replace='Oui', value='1')
