@@ -7,8 +7,19 @@ from torch.utils.data import DataLoader
 from torch.utils.data import random_split
 from tqdm.notebook import tqdm
 
+quanti_cols_df_names = ['id', '_3_4_methylenedioxyethylamphetamine', '_3_4_methylene_dioxy_methylamphetamine', '_3_4_methylenedioxyphenylacetone', '_4f_mdmb_butinaca', '_5f_adb', '_5f_mdmb_pica', 'acetylcodeine', 'acetylthebaol', 'acide_4_hydroxybutanoique', 'acide_benzoique', 'acide_borique', 'adb_butinaca', 'amidon', 'aminopyrine', 'amoxycilline', 'amphetamine', 'benzocaine', 'benzoylecgonine', 'bicarbonate_de_sodium', 'bicarbonates', 'buprenorphine', 'cafeine', 'cannabidiol', 'cannabigerol', 'cannabinol', 'cis_cinnamoylcocaine', 'clonazepam', 'clotrimazole', 'cocaine', 'codeine', 'creatine', 'delta8_tetrahydrocannabinol', 'delta9_tetrahydrocannabinol', 'dextromethorphane', 'diametre', 'diltiazem', 'dimethylterephtalate', 'diphenydramine', 'ecgonidine', 'ecgoninemethylester', 'epaisseur', 'fub_amb', 'gammabutyrolactone', 'glucose', 'griseofulvine', 'guaifenesine', 'hauteur', 'heroine', 'hydroxyzine', 'ibuprofene', 'inositol', 'isoleucine', 'ketamine', 'lactitol', 'lactose', 'largeur', 'leucine', 'levamisole', 'lidocaine', 'longueur', 'maltose', 'mannitol', 'masse', 'mdmb_4en_pinaca', 'meconine', 'methamphetamine', 'methylecgonidine', 'monoacetylmorphine', 'morphine', 'nicotine', 'n_methyl_tryptamine', 'norcocaine', 'noscapine', 'o3_monoacetylmorphine_', 'o6_monoacetylmorphine', 'oxycodone', 'papaverine', 'paracetamol', 'phenacetine', 'piracetam', 'procaine', 'pv8', 'saccharose', 'sorbitol', 'talc', 'taux_cbd', 'taux_cbn', 'terephtalates', 'tetracaine', 'tramadol', 'trans_cinnamoylcocaine', 'tropacocaine', 'uree', 'valine', 'vanilline', 'id_lot']
 
-def load_samples(subsample_size=-1):
+quali_cols_df_names = ['abime', 'cbd', 'cbn', 'couleur', 'couleur_exterieur', 'couleur_exterieur_1', 'couleur_exterieur_2', 'couleur_interieur', 'description_de_l_objet', 'etiquette', 'forme', 'logo', 'nom_de_logo', 'numero_echantillon', 'ovule', 'presentation', 'secabilite_recto', 'secabilite_verso', 'type_drogue', 'visqueux']
+
+def clean_samples(samples):
+    empty_cols = samples.columns[(samples == 0).all()]
+    clean_samples = samples.drop(columns=empty_cols)
+    clean_samples = clean_samples.drop(columns=['id', 'id_lot'])
+    print(f'{len(empty_cols) + 2} columns dropped.')
+
+    return clean_samples
+
+def load_samples(subsample_size=-1, drug_type=None):
     # Loading data
     conn = psycopg2.connect(database="full_STUPS",
                             user="postgres",
@@ -16,12 +27,20 @@ def load_samples(subsample_size=-1):
                             password="postgres",
                             port=5432)
     cur = conn.cursor()
-    cur.execute('''select distinct ep.id, _3_4_methylenedioxyethylamphetamine, _3_4_methylene_dioxy_methylamphetamine, _5f_adb, _5f_mdmb_pica, acide_4_hydroxybutanoique, adb_butinaca, amphetamine, buprenorphine, cafeine, cannabidiol, cannabinol, clonazepam, cocaine, delta8_tetrahydrocannabinol, delta9_tetrahydrocannabinol, diametre, epaisseur, fub_amb, gammabutyrolactone, hauteur, heroine, ketamine, largeur, levamisole, lidocaine, longueur, masse, mdmb_4en_pinaca, methamphetamine, morphine, noscapine, o6_monoacetylmorphine, paracetamol, phenacetine, procaine, id_lot
+
+    query =  '''select distinct ep.*, id_lot
                 from echantillon_propriete ep
-                inner join echantillon e on e.id = ep.id
-                inner join composition c on c.id = e.id_composition
-                inner join lot_complet lc on (lc.e1 = c.id or lc.e2 = c.id)
-                order by id_lot''')
+                    inner join echantillon e on e.id = ep.id
+                    inner join composition c on c.id = e.id_composition
+                    inner join lot_complet lc on (
+                        lc.e1 = c.id
+                        or lc.e2 = c.id
+                    )'''
+    
+    if drug_type != None:
+        query += f'WHERE type_drogue = \'{drug_type}\''
+
+    cur.execute(query)
 
     samples = cur.fetchall()
     conn.commit()
@@ -29,12 +48,17 @@ def load_samples(subsample_size=-1):
     colnames = [desc[0] for desc in cur.description]
 
     samples = pd.DataFrame(list(samples), columns=colnames)
+    samples.drop(columns=['description_de_l_objet', 'nom_de_logo', 'numero_echantillon', ])
 
-    # Transforming None values to 0.0 for quantitative columns.
-    quanti = samples[['_3_4_methylenedioxyethylamphetamine', '_3_4_methylene_dioxy_methylamphetamine', '_5f_adb', '_5f_mdmb_pica', 'acide_4_hydroxybutanoique', 'adb_butinaca', 'amphetamine', 'buprenorphine', 'cafeine', 'cannabidiol', 'cannabinol', 'clonazepam', 'cocaine', 'delta8_tetrahydrocannabinol', 'delta9_tetrahydrocannabinol', 'diametre', 'epaisseur', 'fub_amb', 'gammabutyrolactone', 'hauteur', 'heroine', 'ketamine', 'largeur', 'levamisole', 'lidocaine', 'longueur', 'masse', 'mdmb_4en_pinaca', 'methamphetamine', 'morphine', 'noscapine', 'o6_monoacetylmorphine', 'paracetamol', 'phenacetine', 'procaine']]
-    quanti = quanti.fillna(value=0.0).astype(float)
+    quanti_cols = samples[quanti_cols_df_names].fillna(value=0.0).astype(float)
+
+    quali_cols = samples[quali_cols_df_names]
+    quali_cols = quali_cols.replace(to_replace='Oui', value='1')
+    quali_cols = quali_cols.replace(to_replace='Non', value='0')
+    quali_cols = pd.get_dummies(quali_cols, drop_first=True, dtype=float)
     
-    samples[['_3_4_methylenedioxyethylamphetamine', '_3_4_methylene_dioxy_methylamphetamine', '_5f_adb', '_5f_mdmb_pica', 'acide_4_hydroxybutanoique', 'adb_butinaca', 'amphetamine', 'buprenorphine', 'cafeine', 'cannabidiol', 'cannabinol', 'clonazepam', 'cocaine', 'delta8_tetrahydrocannabinol', 'delta9_tetrahydrocannabinol', 'diametre', 'epaisseur', 'fub_amb', 'gammabutyrolactone', 'hauteur', 'heroine', 'ketamine', 'largeur', 'levamisole', 'lidocaine', 'longueur', 'masse', 'mdmb_4en_pinaca', 'methamphetamine', 'morphine', 'noscapine', 'o6_monoacetylmorphine', 'paracetamol', 'phenacetine', 'procaine']] = quanti[['_3_4_methylenedioxyethylamphetamine', '_3_4_methylene_dioxy_methylamphetamine', '_5f_adb', '_5f_mdmb_pica', 'acide_4_hydroxybutanoique', 'adb_butinaca', 'amphetamine', 'buprenorphine', 'cafeine', 'cannabidiol', 'cannabinol', 'clonazepam', 'cocaine', 'delta8_tetrahydrocannabinol', 'delta9_tetrahydrocannabinol', 'diametre', 'epaisseur', 'fub_amb', 'gammabutyrolactone', 'hauteur', 'heroine', 'ketamine', 'largeur', 'levamisole', 'lidocaine', 'longueur', 'masse', 'mdmb_4en_pinaca', 'methamphetamine', 'morphine', 'noscapine', 'o6_monoacetylmorphine', 'paracetamol', 'phenacetine', 'procaine']]
+    samples = pd.merge(quali_cols, quanti_cols, left_index=True, right_index=True)
+
 
     # Subsampling data
     if subsample_size != -1:
@@ -43,10 +67,9 @@ def load_samples(subsample_size=-1):
     return samples
 
 
-def load_samples_dataset(size=-1):
-    samples = dl.load_samples(subsample_size=size)
-    # clean_samples = samples.drop(columns=['id', 'num_echantillon', 'id_lot'])
-    clean_samples = samples.drop(columns=['id', 'id_lot'])
+def load_samples_dataset(size=-1, drug_type=None):
+    samples = load_samples(subsample_size=size, drug_type=drug_type)
+    clean = clean_samples(samples)
 
     dataset_tuples = []
     ids = samples['id_lot'].unique()
@@ -55,7 +78,7 @@ def load_samples_dataset(size=-1):
     for id_index in tqdm(range(len(ids))):
 
         id = ids[id_index]
-        batch_samples = list(clean_samples.loc[samples['id_lot'] == id].itertuples(index=False, name=None))
+        batch_samples = list(clean.loc[samples['id_lot'] == id].itertuples(index=False, name=None))
         batch_samples_size = len(batch_samples)
 
         for i in range(0, batch_samples_size):
