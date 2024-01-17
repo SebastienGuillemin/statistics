@@ -77,19 +77,16 @@ def load_samples(positive_examples_count=-1, normalize=True, drug_type=None):
 
     return samples
 
-
-def load_samples_dataset(positive_examples_count=-1, drug_type=None):
-    samples = load_samples(positive_examples_count=positive_examples_count, drug_type=drug_type)
-
+def create_positive_examples(samples):
+    print('Creating positive examples.')
     dataset_tuples = []
     ids = samples['id_lot'].unique()
+    print(f'{len(ids)} different ids.')
 
     # Matrix without unnecessary columns.
     clean = samples.drop(columns=['id_lot'])
-
-    print('Creating positive examples.')
+    
     for id_index in tqdm(range(len(ids))):
-
         id = ids[id_index]
         batch_samples = list(clean.loc[samples['id_lot'] == id].itertuples(index=False, name=None))
         batch_samples_size = len(batch_samples)
@@ -101,51 +98,34 @@ def load_samples_dataset(positive_examples_count=-1, drug_type=None):
                 if i != j:
                     sample2 = batch_samples[j]
                     dataset_tuples.append((sample1, sample2, 1))
+    return dataset_tuples
 
-    dataset_size = len(dataset_tuples)
+def create_negative_examples(dataset_tuples, replication_factor=2):
+    print('Creating negative examples.')
+    dataset_tuples_size = len(dataset_tuples)
     counter_examples = []
 
     print('Creating negative examples.')
     for tuple_index in tqdm(range(len(dataset_tuples))):
+        for i in range(replication_factor):
+            tuple = dataset_tuples[tuple_index]
+            new_tuple = (tuple[0], dataset_tuples[random.randint(3, dataset_tuples_size - 1)][1], 1)
 
-        tuple = dataset_tuples[tuple_index]
-        new_tuple = (tuple[0], dataset_tuples[random.randint(3, dataset_size - 1)][1], 1)
+            while new_tuple in dataset_tuples:
+                new_tuple = (tuple[0], dataset_tuples[random.randint(3, dataset_tuples_size - 1)][1], 1)
 
-        while new_tuple in dataset_tuples:
-            new_tuple = (tuple[0], dataset_tuples[random.randint(3, dataset_size - 1)][1], 1)
-
-        new_tuple = (new_tuple[0], new_tuple[1], 0)
-        counter_examples.append(new_tuple)
+            new_tuple = (new_tuple[0], new_tuple[1], 0)
+            counter_examples.append(new_tuple)
 
     dataset_tuples += counter_examples
+    return dataset_tuples
+    
+def load_samples_dataset(positive_examples_count=-1, drug_type=None):
+    samples = load_samples(positive_examples_count=positive_examples_count, drug_type=drug_type)
+
+    dataset_tuples = create_positive_examples(samples=samples)
+    dataset_tuples = create_negative_examples(dataset_tuples=dataset_tuples)    
 
     print(f'Dataset size : {len(dataset_tuples)}')
 
     return SamplesDataset(dataset_tuples)
-
-
-def split_dataset(full_dataset, split_ratio=0.8):
-    print(f'Spliting dataset. Ratio : {split_ratio}.')
-    train_size = int(split_ratio * len(full_dataset))
-    test_size = len(full_dataset) - train_size
-
-    return random_split(full_dataset, [train_size, test_size])
-
-
-def get_dataloaders(samples_count=-1, split_ratio=0.8, device=None):
-    print(f'Creating dataset using {"all available" if samples_count == -1 else samples_count} samples.')
-    samples_dataset = load_samples_dataset(size=samples_count)
-    print(f'Dataset created : {len(samples_dataset)} examples ({samples_dataset.get_positive_examples_number()} positive examples, {samples_dataset.get_negative_examples_number()} nagative examples)')
-
-    train_dataset, test_dataset = split_dataset(samples_dataset, split_ratio)
-
-    train_dataloader = DataLoader(train_dataset, batch_size=64, shuffle=True, pin_memory=True)
-    test_dataloader = DataLoader(test_dataset, batch_size=64, shuffle=True, pin_memory=True)
-
-    print(f'Training dataset size : {len(train_dataloader.dataset)}. Testing dataset size : {len(test_dataloader.dataset)}.')
-
-    if device != None:
-        train_dataloader.to(device)
-        test_dataset.to(device)
-
-    return train_dataloader, test_dataloader

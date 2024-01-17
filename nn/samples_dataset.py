@@ -36,11 +36,3 @@ class SamplesDataset(Dataset):
     
     def get_row_dataset(self):
         return self.pairs, self.labels
-    
-    def shuffle(self):
-        temp = list(zip(self.pairs, self.labels))
-        random.shuffle(temp)
-        
-        new_pairs,  new_labels = zip(*temp)
-        self.pairs = list(new_pairs)
-        self.labels = list(new_labels)
