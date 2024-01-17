@@ -14,12 +14,12 @@ quali_cols_df_names = ['abime', 'cbd', 'cbn', 'couleur', 'couleur_exterieur', 'c
 def clean_samples(samples):
     empty_cols = samples.columns[(samples == 0).all()]
     clean_samples = samples.drop(columns=empty_cols)
-    clean_samples = clean_samples.drop(columns=['id', 'id_lot'])
-    print(f'{len(empty_cols) + 2} columns dropped.')
+    clean_samples = clean_samples.drop(columns=['id'])
+    print(f'Cleaning samples columns : {len(empty_cols) + 2} columns dropped.')
 
     return clean_samples
 
-def load_samples(subsample_size=-1, normalize=True, drug_type=None):
+def load_samples(positive_examples_count=-1, normalize=True, drug_type=None):
     # Loading data
     conn = psycopg2.connect(database="full_STUPS",
                             user="postgres",
@@ -50,36 +50,42 @@ def load_samples(subsample_size=-1, normalize=True, drug_type=None):
     samples = pd.DataFrame(list(samples), columns=colnames)
     samples.drop(columns=['description_de_l_objet', 'nom_de_logo', 'numero_echantillon', ])
 
+    # Quantitative columns
     quanti_cols = samples[quanti_cols_df_names].astype(float)
     
-
+    # ----Normalize if needed
     if normalize:
         max_quanti_cols = quanti_cols.max()
         quanti_cols = quanti_cols.divide(max_quanti_cols)
 
     quanti_cols = quanti_cols.fillna(value=0.0)
+    quanti_cols = clean_samples(samples=quanti_cols)
 
+    # Qualitative columns
     quali_cols = samples[quali_cols_df_names]
     quali_cols = quali_cols.replace(to_replace='Oui', value='1')
     quali_cols = quali_cols.replace(to_replace='Non', value='0')
     quali_cols = pd.get_dummies(quali_cols, drop_first=True, dtype=float)
     
+    # Merge quantitative and qualitative
     samples = pd.merge(quali_cols, quanti_cols, left_index=True, right_index=True)
 
 
-    # Subsampling data
-    if subsample_size != -1:
-        samples = samples.iloc[:subsample_size, :]
+    # Subsampling data if needed
+    if positive_examples_count != -1:
+        samples = samples.iloc[:positive_examples_count, :]
 
     return samples
 
 
-def load_samples_dataset(size=-1, drug_type=None):
-    samples = load_samples(subsample_size=size, drug_type=drug_type)
-    clean = clean_samples(samples)
+def load_samples_dataset(positive_examples_count=-1, drug_type=None):
+    samples = load_samples(positive_examples_count=positive_examples_count, drug_type=drug_type)
 
     dataset_tuples = []
     ids = samples['id_lot'].unique()
+
+    # Matrix without unnecessary columns.
+    clean = samples.drop(columns=['id_lot'])
 
     print('Creating positive examples.')
     for id_index in tqdm(range(len(ids))):
