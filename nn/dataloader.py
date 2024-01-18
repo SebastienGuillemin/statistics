@@ -86,8 +86,6 @@ def load_samples(positive_examples_count=-1, normalize=True, drug_type=None):
     columns_names_2 = list(map(lambda name: name + '_ech2', columns_names_1))
 
     columns_names = columns_names_1 + columns_names_2
-    print(columns_names)
-    print(len(columns_names))
     
     # Subsampling data if needed
     if positive_examples_count != -1:
