@@ -20,7 +20,7 @@ def clean_samples(samples):
 
     return clean_samples
 
-def process_quantiative_data(samples, normalize=True):
+def process_quantiative_data(samples, normalize: bool =True):
     # Quantitative columns
     quanti = samples[quanti_cols_df_names].astype(float)
     
@@ -44,7 +44,7 @@ def process_qualitative_data(samples):
     
     return quali
 
-def load_samples(positive_examples_count=-1, normalize=True, drug_type=None):
+def load_samples(positive_examples_count: int =-1, normalize: bool =True, drug_type: str =None) -> tuple[pd.DataFrame, list[str]] :
     # Loading data
     conn = psycopg2.connect(database="full_STUPS",
                             user="postgres",
@@ -79,7 +79,6 @@ def load_samples(positive_examples_count=-1, normalize=True, drug_type=None):
     
     # Merge quantitative and qualitative
     samples = pd.merge(quali, quanti, left_index=True, right_index=True)
-    print(samples.shape)
     
     columns_names_1 = list(samples.columns)
     columns_names_1.remove('id_lot')
@@ -93,11 +92,11 @@ def load_samples(positive_examples_count=-1, normalize=True, drug_type=None):
 
     return samples, columns_names
 
-def create_positive_examples(samples):
+def create_positive_examples(samples: pd.DataFrame) -> list[tuple]:
     print('Creating positive examples.')
     dataset_tuples = []
     ids = samples['id_lot'].unique()
-    print(f'{len(ids)} different ids.')
+    print(f'-> {len(ids)} different ids.')
 
     # Matrix without unnecessary columns.
     clean = samples.drop(columns=['id_lot'])
@@ -117,12 +116,11 @@ def create_positive_examples(samples):
                     
     return dataset_tuples
 
-def create_negative_examples(dataset_tuples, replication_factor=2):
+def create_negative_examples(dataset_tuples: list[tuple], replication_factor: int =2) -> list[tuple]:
     print('Creating negative examples.')
     dataset_tuples_size = len(dataset_tuples)
     counter_examples = []
 
-    print('Creating negative examples.')
     for tuple_index in tqdm(range(len(dataset_tuples))):
         for i in range(replication_factor):
             tuple = dataset_tuples[tuple_index]
@@ -137,7 +135,7 @@ def create_negative_examples(dataset_tuples, replication_factor=2):
     dataset_tuples += counter_examples
     return dataset_tuples
     
-def load_samples_dataset(positive_examples_count=-1, drug_type=None, export_as_csv=False, from_csv=False):
+def load_samples_dataset(positive_examples_count=-1, drug_type=None, export_as_csv=False, from_csv=False) -> SamplesDataset:
     dataset = None
     if not from_csv:
         samples, columns_names = load_samples(positive_examples_count=positive_examples_count, drug_type=drug_type)
