@@ -2,4 +2,5 @@
 .virtual_documents
 __pycache__
 .Rproj.user
+.Rproj.user/shared/notebooks/patch-chunk-names
 .Rhistory
