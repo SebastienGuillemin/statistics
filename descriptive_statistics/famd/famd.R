@@ -1,58 +1,80 @@
-library(FactoMineR)
-library(dplyr)
+suppressMessages(library(FactoMineR))
 library(missMDA)
-library(mice)
-library(VIM)
 library(descriptr)
 library(factoextra)
+library(rjson)
+library(readr)
 
-pdf(file = "./results.pdf")
+maketitle <- function(drug_type, csv_path) {
+  plot.new()
+  title <- paste("AFMD for", drug_type, "dataset")
+  des <- paste("The following pages present graphical results for FAMD\nperformed over ", drug_type, " dataset (", csv_path, ").", sep = "")
+  
+  text(.5 - .5 / nchar(title), .7, title, cex = 2.5)
+  text(.5 - .5 / 54, .3, des, cex = 1.1)
+}
 
 ## AFDM avec FactoMineR
-# Import fichier csv.
-cana<-cannabis
+perform_famd <- function(drug_type, csv_path, factors) {
+  maketitle(drug_type = drug_type, csv_path = csv_path)
+  
+  print(paste("Chargement des donnnées pour", drug_type))
+  # Import fichier csv.
+  df <- read_csv(csv_path, show_col_types = FALSE)
+  
+  # Convertion colonne 'id' (première colonne) en nom de lignes
+  df<-data.frame(df, row.names=1)
+  
+  # Transformation de certaines colonnes en factor.
+  for (drug_factor in factors) {
+    df[[drug_factor]]<-as.factor(df[[drug_factor]])
+  }
+  print(ds_screener(df))
+  
+  # Estimation du nombre de composantes pour AFDM
+  # print("Estimation du nombre de composantes pour AFDM")
+  # ncomp <- estim_ncpFAMD(df, ncp.max = 2)
+  
+  # Imputation des données manquantes
+  print("Imputation des données manquantes.")
+  imputed <- imputeFAMD(df)
+  
+  # Calcule FAMD sur les données imputées
+  print("Calcule AFDM sur les données imputées.")
+  res_famd <- FAMD(df, tab.disj=imputed$tab.disj, graph=FALSE)
+  
+  # Calcul de la variance associée à chaque valeur propre
+  print("Calcul de la variance associée à chaque valeur propre.")
+  print(fviz_screeplot(res_famd))
+  
+  # Affichage des résultats FAMD
+  print("Affichage des résultats AFDM")
+  # Cercle de corrélation des variables quantitatives
+  print("    Cercle de corrélation des variables quantitatives.")
+  print(fviz_famd_var(res_famd, "quanti.var",  col.var = "contrib", gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), repel = TRUE))
+  
+  # Affichage des variables qualitatives
+  print("    Affichage des variables qualitatives.")
+  print(fviz_famd_var(res_famd, "quali.var",  col.var = "contrib", gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), repel = TRUE))
+  
+  
+  # Graphique des individus de la FAMD
+  # print("Graphique des individus de la FAMD")
+  # print(fviz_famd_ind(res_famd, repel=TRUE))
+  
+  # Couleur par valeurs cos2: qualité sur le plan des facteurs
+  print("    Cercle de corrélation des variables quantitatives selon le cos2.")
+  print(fviz_famd_var(res_famd, "quanti.var", col.var = "cos2", gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), repel = TRUE))
+  
+  print("AFMD terminée.\n\n")
+}
 
-# Convertion colonne 'id' (première colonne) en nom de lignes
-cana<-data.frame(cana, row.names=1)
+pdf(file = "./results.pdf", paper = "a4")
+json_file <- fromJSON(file = "parameters.json")
+for (drug_type in json_file$drug_types) {
+  csv_path <- paste(json_file$data_path, paste(drug_type, ".csv", sep = ""), sep = "")
+  
+  perform_famd(drug_type = drug_type, csv_path = csv_path, factors = json_file$factors[[drug_type]])
+}
 
-# Copie du dataframe cana pour garder les données de départ.
-df <- cana
-# Transformation de certaines colonnes en factor.
-df$abime<-as.factor(df$abime)
-df$etiquette<-as.factor(df$etiquette)
-df$presentation<-as.factor(df$presentation)
-df$visqueux<-as.factor(df$visqueux)
-ds_screener(df)
-
-# Imputation des données manquantes
-# Estimation du nombre de composantes pour AFDM
-ncomp <- estim_ncpFAMD(df, ncp.max=2, maxiter=100)
-
-# Imputation des données manquantes
-imputed <- imputeFAMD(df, ncp=ncomp$ncp)
-ds_screener(df)
-
-# Calcule FAMD sur les données imputées 
-res_famd <- FAMD(df, tab.disj=imputed$tab.disj, graph=FALSE)
-
-# Récupération des valeurs propres
-eig.val <- get_eigenvalue(res_famd)
-head(eig.val)
-fviz_screeplot(res_famd)
-# vars <- get_famd_var(res_famd)
-
-## Affichage des résultats FAMD
-par(mfrow=c(1,1))
-# Cercle de corrélation des variables quantitatives
-fviz_famd_var(res_famd, "quanti.var",  col.var = "contrib", gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), repel = TRUE)
-
-# Affichage des variables qualitatives
-fviz_famd_var(res_famd, "quali.var",  col.var = "contrib", gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), repel = TRUE)
-
-
-# Graphique des individus de la FAMD
-# fviz_famd_ind(res_famd, repel=TRUE)
-
-# Couleur par valeurs cos2: qualité sur le plan des facteurs
-fviz_famd_var(res_famd, "quanti.var", col.var = "cos2", gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), repel = TRUE)
-dev.off()
+suppressMessages(dev.off())

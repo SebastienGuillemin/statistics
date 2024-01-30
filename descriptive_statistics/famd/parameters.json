@@ -1,0 +1,10 @@
+{
+    "data_path": "../../data/",
+    "drug_types": ["cannabis", "heroine", "cocaine", "amphet"],
+    "factors": {
+        "cannabis": ["abime", "etiquette", "presentation", "visqueux"],
+        "heroine": ["couleur"],
+        "cocaine": ["couleur"],
+        "amphet": ["couleur", "forme"]
+    }
+}
