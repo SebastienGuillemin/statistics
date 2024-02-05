@@ -49,18 +49,21 @@ perform_famd <- function(drug_type, csv_path, factors) {
   
   # Affichage des résultats FAMD
   print("Affichage des résultats AFDM")
-  # Cercle de corrélation des variables quantitatives
-  print("    Cercle de corrélation des variables quantitatives.")
-  print(fviz_famd_var(res_famd, "quanti.var",  col.var = "contrib", gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), repel = TRUE))
+  # Cercles de corrélation des variables quantitatives
+  print("    Cercle de corrélation des variables quantitatives (dim. 1 et 2).")
+  print(fviz_famd_var(res_famd, "quanti.var",  col.var = "contrib", axes = c(1, 2), gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), repel = TRUE))
+  
+  print("    Cercle de corrélation des variables quantitatives (dim. 1 et 3).")
+  print(fviz_famd_var(res_famd, "quanti.var",  col.var = "contrib", axes = c(1, 3), gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), repel = TRUE))
   
   # Affichage des variables qualitatives
-  print("    Affichage des variables qualitatives.")
-  print(fviz_famd_var(res_famd, "quali.var",  col.var = "contrib", gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), repel = TRUE))
+  print("    Contributions des variables qualitatives.")
+  print(fviz_famd_var(res_famd, "quali.var",  col.var = "contrib", axes = c(1, 2), gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), repel = TRUE))
   
   
   # Graphique des individus de la FAMD
-  # print("Graphique des individus de la FAMD")
-  # print(fviz_famd_ind(res_famd, repel=TRUE))
+  #print("    Graphique des individus de la FAMD")
+  #print(fviz_famd_ind(head(res_famd), axes = c(1, 2), repel=TRUE))
   
   # Couleur par valeurs cos2: qualité sur le plan des facteurs
   print("    Cercle de corrélation des variables quantitatives selon le cos2.")
